@@ -1,8 +1,12 @@
 {
     "name":"devmon",
+    "version": "0.0.1",
     "dependencies":{
         "http-proxy": "*",
         "forever-monitor": "*",
-        "formidable": "*"
+        "formidable": "*",
+        "connect": "*",
+        "express": "*",
+        "underscore": "*"
     }
 }

@@ -6,8 +6,9 @@ var fs = require('fs');
 var child_process = require('child_process');
 var forever = require('forever-monitor');
 var connect = require('connect')
-var httpProxy = require('../../lib/http-proxy');
+var httpProxy = require('http-proxy');
 var app = require('./app');
+var _ = require('underscore');
 
 var DEBUG = true;
 var PORT = process.env.PORT || 5000;
@@ -17,7 +18,10 @@ var devmon_log = function(s) {
 };
 
 String.prototype.endsWith = function(suffix) {
-        return this.indexOf(suffix, this.length - suffix.length) !== -1;
+    return this.indexOf(suffix, this.length - suffix.length) !== -1;
+};
+String.prototype.startsWith = function (str){
+    return this.slice(0, str.length) == str;
 };
 
 
@@ -25,7 +29,7 @@ String.prototype.endsWith = function(suffix) {
  * command should be an array of args.
  * watchDirectory is optional, for when you want to watch files. */
 var spawn = function (name, command, watchDirectory) {
-    var watchObj = watchDirectory ? {watch:true, watchDirectory:'.'} : undefined;
+    var watchObj = watchDirectory ? {watch:true, watchDirectory:'.'} : {};
     var child = forever.start(command, watchObj);
 
     child.on('start', function () { devmon_log(name + ' has started');});
@@ -53,6 +57,11 @@ var proxyFromConfigs  = function (configs) {
             var config, i;
             for (i = 0; i < configs.length; i ++) {
                 config = configs[i];
+
+                // falsy prefix means root config, no rewriting necessary.
+                if (!config.prefix)
+                    continue;
+
                 if (req.headers.referer && req.headers.referer.endsWith(config.prefix)) {
                     // this request came from a matched prefix
                     if (req.url.indexOf(config.prefix) !== 0)
@@ -67,16 +76,24 @@ var proxyFromConfigs  = function (configs) {
             var config, i, matched = false;
             for (i = 0; i < configs.length; i ++) {
                 config = configs[i];
+
+                // falsy prefix means root config, routing is N/A.
+                if (!config.prefix)
+                    continue;
+
+                console.log(config);
+                console.log(req.url);
                 if (req.url.startsWith(config.prefix)) {
-                    req.url.replace(config.prefix, '/');
+                    req.url = req.url.replace(config.prefix, '/');
                     matched = true;
                     break;
                 }
             }
 
             if (!matched)
-                config = appConfig;
+                config = appPConfig;
 
+            console.log(config.name);
             proxies[config.name].web(req, res);
         }
     ).listen(PORT);
@@ -97,6 +114,7 @@ var proxyFromConfigs  = function (configs) {
             });
         }
     });
+        console.log(proxies);
 };
 
 var start = function(appCmd) {
@@ -104,16 +122,19 @@ var start = function(appCmd) {
     var proxyConfigs = [];
 
     /* initial configs */
-    appConfig = ['App', appCmd];
-    spawnConfigs.push(appConfig);
-    proxyConfigs.push(['App', null, 3000, false]);
+    appSConfig = ['App', appCmd];
+    spawnConfigs.push(appSConfig);
+    appPConfig = { name: 'App', prefix: null, port: 40000, webSockFlag: false };
+    proxyConfigs.push(appPConfig);
 
     /* start the devmon web app */
-    var webapp = app.listen(4000);
-    proxyConfigs.push(['admin', '/appcubator', 4000, false]);
+    var webapp = app.app.listen(4000);
+    proxyConfigs.push({ name: 'admin', prefix: '/appcubator/', port: 4000, webSockFlag: false });
 
     /* start subprocesses and proxies */
     var spawnChildren = _.map(spawnConfigs, spawnFromConfig);
     var proxyServer = proxyFromConfigs(proxyConfigs);
 
 };
+
+start(['node', 'test.js']);
