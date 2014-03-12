@@ -16,6 +16,6 @@
             "name": "butterfly",
             "prefix": "/shell/",
             "port": 57575,
-            "webSockFlag": false
+            "webSockFlag": true
         }]
 }

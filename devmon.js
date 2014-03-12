@@ -9,6 +9,7 @@ var connect = require('connect');
 var httpProxy = require('http-proxy');
 var app = require('./app');
 var _ = require('underscore');
+var jsInsert = require('./wsClientHack').jsInsert;
 
 var DEBUG = true;
 var PORT = process.env.PORT || 5000;
@@ -85,7 +86,7 @@ var proxyFromConfigs  = function (configs) {
             next();
         },
         // URL prefix matching
-        function (req, res) {
+        function (req, res, next) {
             var config, i, matched = false;
             var oldUrl = req.url;
             for (i = 0; i < configs.length; i ++) {
@@ -104,9 +105,44 @@ var proxyFromConfigs  = function (configs) {
 
             if (!matched)
                 config = appPConfig;
+            req.__config = config; // for the next middleware.
 
             devmon_log('Incoming request url \'' + oldUrl + '\' matched \'' + config.name +'\', routing to :' + config.port);
+            next();
+        },
+        /* If webSockFlag, modify response html to monkeypatch WebSocket constructor to fix the clients ws URL. (hack) */
+        function (req, res, next) {
+            var config = req.__config;
+            if (config.webSockFlag) {
 
+                var _write = res.write;
+                var insertion = "<script type=\"text/javascript\">(" + jsInsert.toString() + ")("+JSON.stringify(config.prefix)+");</script>";
+
+                var _setHeader = res.setHeader;
+                res.setHeader = function(name, value) {
+                    if (name.toLowerCase() === 'content-length') {
+                        var contentlength = value;
+                        if (contentlength)
+                            contentlength = parseInt(contentlength);
+                        contentlength += insertion.length;
+                        value = contentlength.toString();
+                    }
+                    _setHeader.call(res, name, value);
+                };
+
+                res.write = function (data) {
+                    var contenttype = res.getHeader('content-type');
+                    if (contenttype && (contenttype.indexOf('text/html') !== -1)) {
+                        data = data.toString().replace("<head>", "<head>" + insertion);
+                        devmon_log('MODIFYING '+ req.url);
+                    }
+                    _write.call(res, data.toString());
+                };
+            }
+            next();
+        },
+        function (req, res) {
+            var config = req.__config;
             proxies[config.name].web(req, res);
         }
     ).listen(PORT);
