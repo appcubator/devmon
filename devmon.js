@@ -62,11 +62,24 @@ var proxyFromConfigs  = function (configs) {
                     continue;
 
                 // TODO FIXME fix this to do some parsing... The base url should start with prefix.
-                if (req.headers.referer && req.headers.referer.endsWith(config.prefix)) {
-                    // this request came from a matched prefix
-                    if (req.url.indexOf(config.prefix) !== 0)
-                        req.url = config.prefix + req.url;
-                    break;
+                if (req.headers.referer) {
+                    // example referer: 'http://127.0.0.1:5000/inspect/debug?port=5858'
+                    var referer = req.headers.referer;
+                    var _ref_no_protocol = referer.slice(referer.indexOf('://') + 3);
+                    var urlTail = _ref_no_protocol.slice(_ref_no_protocol.indexOf('/'));
+
+                    if (urlTail.startsWith(config.prefix)) {
+                        // This request came from a page we proxied
+                        // If the URL isn't going towards the same proxy, modify it so that it will.
+
+                        if (!req.url.startsWith(config.prefix)) {
+                            var oldUrl = req.url;
+                            req.url = config.prefix + req.url.slice(1);
+                            devmon_log("Rewriting URL from '" + oldUrl + "' to '" + req.url + "'");
+                        }
+
+                        break;
+                    }
                 }
             }
             next();
