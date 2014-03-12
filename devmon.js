@@ -119,20 +119,40 @@ var proxyFromConfigs  = function (configs) {
                 var insertion = "<script type=\"text/javascript\">(" + jsInsert.toString() + ")("+JSON.stringify(config.prefix)+");</script>";
 
                 var _setHeader = res.setHeader;
+                var isHTML = null; // null if not yet known, otherwise true/false.
+                var oldcl = null; // null if not yet known, otherwise an int.
+                var newcl = null; // null if not yet known, otherwise an int.
                 res.setHeader = function(name, value) {
+
                     if (name.toLowerCase() === 'content-length') {
                         var contentlength = value;
-                        if (contentlength)
+                        if (contentlength) {
                             contentlength = parseInt(contentlength);
+                            oldcl = contentlength;
+                        }
                         contentlength += insertion.length;
-                        value = contentlength.toString();
+                        newcl = contentlength;
+                        if (isHTML) // case where content-type happened first.
+                            value = contentlength.toString();
+                    }
+
+                    if (name.toLowerCase() === 'content-type') {
+                        if (value.indexOf('text/html') !== -1) {
+                            isHTML = true;
+                        } else {
+                            isHTML = false;
+                        }
+                        if (oldcl !== null) {// case where content-length happened first.
+                            newcl = oldcl + insertion.length;
+                            _setHeader.call(res, 'content-length', newcl); // update the value of content-length
+                        }
                     }
                     _setHeader.call(res, name, value);
                 };
 
                 res.write = function (data) {
                     var contenttype = res.getHeader('content-type');
-                    if (contenttype && (contenttype.indexOf('text/html') !== -1)) {
+                    if (isHTML) {
                         data = data.toString().replace("<head>", "<head>" + insertion);
                         devmon_log('MODIFYING '+ req.url);
                     }
