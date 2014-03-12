@@ -5,7 +5,7 @@ var formidable = require('formidable');
 var fs = require('fs');
 var child_process = require('child_process');
 var forever = require('forever-monitor');
-var connect = require('connect')
+var connect = require('connect');
 var httpProxy = require('http-proxy');
 var app = require('./app');
 var _ = require('underscore');
@@ -48,8 +48,7 @@ var spawnFromConfig = function(config) {
 
 /* Each config is an obj with keys [name, prefix, port, webSockFlag] */
 var proxyFromConfigs  = function (configs) {
-    // TODO setup proxy using http-proxy. do the referer trick.
-    var proxies = {}; // name -> proxy
+    var proxies = {}; // name -> httpProxy object
 
     connect.createServer(
         // Referer based url-rewriting trick.
@@ -62,6 +61,7 @@ var proxyFromConfigs  = function (configs) {
                 if (!config.prefix)
                     continue;
 
+                // TODO FIXME fix this to do some parsing... The base url should start with prefix.
                 if (req.headers.referer && req.headers.referer.endsWith(config.prefix)) {
                     // this request came from a matched prefix
                     if (req.url.indexOf(config.prefix) !== 0)
@@ -74,6 +74,7 @@ var proxyFromConfigs  = function (configs) {
         // URL prefix matching
         function (req, res) {
             var config, i, matched = false;
+            var oldUrl = req.url;
             for (i = 0; i < configs.length; i ++) {
                 config = configs[i];
 
@@ -81,8 +82,6 @@ var proxyFromConfigs  = function (configs) {
                 if (!config.prefix)
                     continue;
 
-                console.log(config);
-                console.log(req.url);
                 if (req.url.startsWith(config.prefix)) {
                     req.url = req.url.replace(config.prefix, '/');
                     matched = true;
@@ -93,7 +92,8 @@ var proxyFromConfigs  = function (configs) {
             if (!matched)
                 config = appPConfig;
 
-            console.log(config.name);
+            devmon_log('Incoming request url \'' + oldUrl + '\' matched \'' + config.name +'\', routing to :' + config.port);
+
             proxies[config.name].web(req, res);
         }
     ).listen(PORT);
@@ -114,18 +114,15 @@ var proxyFromConfigs  = function (configs) {
             });
         }
     });
-        console.log(proxies);
 };
 
-var start = function(appCmd) {
-    var spawnConfigs = [];
-    var proxyConfigs = [];
+var appSConfig, appPConfig, CONFIG;
 
-    /* initial configs */
-    appSConfig = ['App', appCmd];
-    spawnConfigs.push(appSConfig);
-    appPConfig = { name: 'App', prefix: null, port: 40000, webSockFlag: false };
-    proxyConfigs.push(appPConfig);
+var start = function(spawnConfigs, proxyConfigs) {
+
+    /* global app configs */
+    appSConfig = _.find(spawnConfigs, function(conf) { return conf[0] === 'App'; });
+    appPConfig = _.find(proxyConfigs, function(conf) { return conf.name === 'App'; });
 
     /* start the devmon web app */
     var webapp = app.app.listen(4000);
@@ -137,4 +134,23 @@ var start = function(appCmd) {
 
 };
 
-start(['node', 'test.js']);
+if (require.main === module) {
+    var file = __dirname + '/devmon.json';
+
+    fs.readFile(file, 'utf8', function (err, data) {
+        if (err) {
+          devmon_log('Error: ' + err);
+          return;
+        }
+
+        CONFIG = JSON.parse(data);
+        var parse = require('shell-quote').parse;
+        _.each(CONFIG.processes, function(sconf) {
+            // parse the string commands to arrays of args
+            sconf[1] = parse(sconf[1]);
+        });
+
+        devmon_log("Loaded configuration from devmon.json: \n" + JSON.stringify(CONFIG, null, 4));
+        start(CONFIG.processes, CONFIG.proxies);
+    });
+}
