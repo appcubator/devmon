@@ -1,0 +1,8 @@
+{
+    "name":"devmon",
+    "dependencies":{
+        "http-proxy": "*",
+        "forever-monitor": "*",
+        "formidable": "*"
+    }
+}
