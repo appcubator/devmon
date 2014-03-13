@@ -9,7 +9,6 @@ var connect = require('connect');
 var httpProxy = require('http-proxy');
 var app = require('./app');
 var _ = require('underscore');
-var jsInsert = require('./wsClientHack').jsInsert;
 
 var DEBUG = true;
 var PORT = process.env.PORT || 5000;
@@ -47,148 +46,63 @@ var spawnFromConfig = function(config) {
     return child;
 };
 
-/* Each config is an obj with keys [name, prefix, port, webSockFlag] */
+/* If host matches a config host, return the config.
+ * Otherwise return the app config. */
+var hostToConfig = function(host, configs) {
+    var config, i, matched = false;
+    for (i = 0; i < configs.length; i ++) {
+        config = configs[i];
+
+        // config.domain is null. don't match this, it's prolly appPConfig, which is the fallback in case nothing else is found
+        if (!config.domain)
+            continue;
+
+        if (host.toLowerCase().startsWith(config.domain.toLowerCase())) {
+            matched = true;
+            break;
+        }
+    }
+
+    if (!matched)
+        config = appPConfig;
+    return config;
+};
+
+/* Each config is an obj with keys [name, domain, port, webSockFlag] */
 var proxyFromConfigs  = function (configs) {
     var proxies = {}; // name -> httpProxy object
-
-    var proxyServer = connect.createServer(
-        // Referer based url-rewriting trick.
-        function(req, res, next) {
-            var config, i;
-            for (i = 0; i < configs.length; i ++) {
-                config = configs[i];
-
-                // falsy prefix means root config, no rewriting necessary.
-                if (!config.prefix)
-                    continue;
-
-                // TODO FIXME fix this to do some parsing... The base url should start with prefix.
-                if (req.headers.referer) {
-                    // example referer: 'http://127.0.0.1:5000/inspect/debug?port=5858'
-                    var referer = req.headers.referer;
-                    var _ref_no_protocol = referer.slice(referer.indexOf('://') + 3);
-                    var urlTail = _ref_no_protocol.slice(_ref_no_protocol.indexOf('/'));
-
-                    if (urlTail.startsWith(config.prefix)) {
-                        // This request came from a page we proxied
-                        // If the URL isn't going towards the same proxy, modify it so that it will.
-
-                        if (!req.url.startsWith(config.prefix)) {
-                            var oldUrl = req.url;
-                            req.url = config.prefix + req.url.slice(1);
-                            devmon_log("Rewriting URL from '" + oldUrl + "' to '" + req.url + "'");
-                        }
-
-                        break;
-                    }
-                }
-            }
-            next();
-        },
-        // URL prefix matching
-        function (req, res, next) {
-            var config, i, matched = false;
-            var oldUrl = req.url;
-            for (i = 0; i < configs.length; i ++) {
-                config = configs[i];
-
-                // falsy prefix means root config, routing is N/A.
-                if (!config.prefix)
-                    continue;
-
-                if (req.url.startsWith(config.prefix)) {
-                    req.url = req.url.replace(config.prefix, '/');
-                    matched = true;
-                    break;
-                }
-            }
-
-            if (!matched)
-                config = appPConfig;
-            req.__config = config; // for the next middleware.
-
-            devmon_log('Incoming request url \'' + oldUrl + '\' matched \'' + config.name +'\', routing to :' + config.port);
-            next();
-        },
-        /* If webSockFlag, modify response html to monkeypatch WebSocket constructor to fix the clients ws URL. (hack) */
-        function (req, res, next) {
-            var config = req.__config;
-            if (config.webSockFlag) {
-
-                var _write = res.write;
-                var insertion = "<script type=\"text/javascript\">(" + jsInsert.toString() + ")("+JSON.stringify(config.prefix)+");</script>";
-
-                var _setHeader = res.setHeader;
-                var isHTML = null; // null if not yet known, otherwise true/false.
-                var oldcl = null; // null if not yet known, otherwise an int.
-                var newcl = null; // null if not yet known, otherwise an int.
-                res.setHeader = function(name, value) {
-
-                    if (name.toLowerCase() === 'content-length') {
-                        var contentlength = value;
-                        if (contentlength) {
-                            contentlength = parseInt(contentlength);
-                            oldcl = contentlength;
-                        }
-                        contentlength += insertion.length;
-                        newcl = contentlength;
-                        if (isHTML) // case where content-type happened first.
-                            value = contentlength.toString();
-                    }
-
-                    if (name.toLowerCase() === 'content-type') {
-                        if (value.indexOf('text/html') !== -1) {
-                            isHTML = true;
-                            if (oldcl !== null) {// case where content-length happened first.
-                                newcl = oldcl + insertion.length;
-                                _setHeader.call(res, 'content-length', newcl); // update the value of content-length
-                            }
-                        } else {
-                            isHTML = false;
-                        }
-                    }
-                    _setHeader.call(res, name, value);
-                };
-
-                res.write = function (data) {
-                    if (isHTML) {
-                        data = data.toString().replace("<head>", "<head>" + insertion);
-                        devmon_log('MODIFYING '+ req.url);
-                    }
-                    _write.call(res, data.toString());
-                };
-            }
-            next();
-        },
-        function (req, res) {
-            var config = req.__config;
-            proxies[config.name].web(req, res);
-        }
-    ).listen(PORT);
-
     _.each(configs, function(config) {
         var proxy = httpProxy.createProxyServer({
             target: 'http://localhost:' + config.port
         });
 
         proxies[config.name] = proxy;
+    });
 
-        if (config.webSockFlag) {
-            // Listen to the `upgrade` event and proxy the 
-            // WebSocket requests as well.
-            //
-            proxyServer.on('upgrade', function (req, socket, head) {
-                if (req.url.startsWith(config.prefix)) {
-                    req.url = req.url.replace(config.prefix, '/');
-                }
-                console.log('ZINGGGGGGGGGG');
-                var proxy = proxies[config.name];
-                proxy.ws(req, socket, head);
-            });
-            proxyServer.on('error', function (i) {
-                console.log('NOOOOOO');
-            });
+    var proxyServer = connect.createServer(
+        // Host based routing
+        function (req, res, next) {
+            var host = req.headers.host;
+            var config = hostToConfig(host, configs);
+            devmon_log('Incoming http request host \'' + host + '\' matched \'' + config.name +'\', routing to :' + config.port);
+            proxies[config.name].web(req, res);
         }
+    ).listen(PORT);
+
+    proxyServer.on('upgrade', function (req, socket, head) {
+        // Listen to the `upgrade` event and proxy the
+        // WebSocket requests as well.
+        //
+        var host = req.headers.host;
+        var config = hostToConfig(host, configs);
+        if (config.webSockFlag) {
+            devmon_log('Incoming ws request host \'' + host + '\' matched \'' + config.name +'\', routing to :' + config.port);
+            proxies[config.name].ws(req, socket, head);
+        }
+    });
+
+    proxyServer.on('error', function (i) {
+        console.log('NOOOOOO');
     });
 };
 
@@ -202,7 +116,7 @@ var start = function(spawnConfigs, proxyConfigs) {
 
     /* start the devmon web app */
     var webapp = app.app.listen(4000);
-    proxyConfigs.push({ name: 'admin', prefix: '/appcubator/', port: 4000, webSockFlag: false });
+    proxyConfigs.push({ name: 'admin', domain: 'devmon', port: 4000, webSockFlag: false });
 
     /* start subprocesses and proxies */
     var spawnChildren = _.map(spawnConfigs, spawnFromConfig);

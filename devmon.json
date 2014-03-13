@@ -4,17 +4,17 @@
                   ["butterfly", "butterfly.server.py"]],
     "proxies": [{
             "name": "App",
-            "prefix": null,
+            "domain": null,
             "port": 40000,
             "webSockFlag": false
         },{
             "name": "node-inspector",
-            "prefix": "/inspect/",
+            "domain": "inspect",
             "port": 8080,
             "webSockFlag": true
         },{
             "name": "butterfly",
-            "prefix": "/shell/",
+            "domain": "shell",
             "port": 57575,
             "webSockFlag": true
         }]
