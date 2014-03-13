@@ -31,7 +31,6 @@ var jsInsert = function(prefix) {
         _ws.prototype.constructor.apply(this, args);
     };
     extend(_ws, window.WebSocket);
-    // :window.WebSocket = _ws;
 };
 
 exports.jsInsert = jsInsert;
