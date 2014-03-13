@@ -51,7 +51,7 @@ var spawnFromConfig = function(config) {
 var proxyFromConfigs  = function (configs) {
     var proxies = {}; // name -> httpProxy object
 
-    connect.createServer(
+    var proxyServer = connect.createServer(
         // Referer based url-rewriting trick.
         function(req, res, next) {
             var config, i;
@@ -139,19 +139,18 @@ var proxyFromConfigs  = function (configs) {
                     if (name.toLowerCase() === 'content-type') {
                         if (value.indexOf('text/html') !== -1) {
                             isHTML = true;
+                            if (oldcl !== null) {// case where content-length happened first.
+                                newcl = oldcl + insertion.length;
+                                _setHeader.call(res, 'content-length', newcl); // update the value of content-length
+                            }
                         } else {
                             isHTML = false;
-                        }
-                        if (oldcl !== null) {// case where content-length happened first.
-                            newcl = oldcl + insertion.length;
-                            _setHeader.call(res, 'content-length', newcl); // update the value of content-length
                         }
                     }
                     _setHeader.call(res, name, value);
                 };
 
                 res.write = function (data) {
-                    var contenttype = res.getHeader('content-type');
                     if (isHTML) {
                         data = data.toString().replace("<head>", "<head>" + insertion);
                         devmon_log('MODIFYING '+ req.url);
@@ -174,12 +173,20 @@ var proxyFromConfigs  = function (configs) {
 
         proxies[config.name] = proxy;
 
-        if (config.webSocketFlag) {
+        if (config.webSockFlag) {
             // Listen to the `upgrade` event and proxy the 
             // WebSocket requests as well.
             //
             proxyServer.on('upgrade', function (req, socket, head) {
+                if (req.url.startsWith(config.prefix)) {
+                    req.url = req.url.replace(config.prefix, '/');
+                }
+                console.log('ZINGGGGGGGGGG');
+                var proxy = proxies[config.name];
                 proxy.ws(req, socket, head);
+            });
+            proxyServer.on('error', function (i) {
+                console.log('NOOOOOO');
             });
         }
     });

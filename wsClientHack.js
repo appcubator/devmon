@@ -25,11 +25,13 @@ var jsInsert = function(prefix) {
 
         // prepend prefix to the url
         l.pathname = prefix + l.pathname.slice(1);
+        console.log('new url: ' + l.href);
         args[0] = l.href;
 
-        _ws.apply(this, args);
+        _ws.prototype.constructor.apply(this, args);
     };
     extend(_ws, window.WebSocket);
+    // :window.WebSocket = _ws;
 };
 
 exports.jsInsert = jsInsert;
