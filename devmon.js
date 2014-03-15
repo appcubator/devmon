@@ -57,7 +57,7 @@ var hostToConfig = function(host, configs) {
         if (!config.domain)
             continue;
 
-        if (host.toLowerCase().startsWith(config.domain.toLowerCase())) {
+        if (host.toLowerCase().startsWith(config.domain.toLowerCase() + '.')) {
             matched = true;
             break;
         }
@@ -125,7 +125,7 @@ var start = function(spawnConfigs, proxyConfigs) {
 };
 
 if (require.main === module) {
-    var file = __dirname + '/devmon.json';
+    var file = __dirname + '/config.json';
 
     fs.readFile(file, 'utf8', function (err, data) {
         if (err) {
@@ -140,7 +140,12 @@ if (require.main === module) {
             sconf[1] = parse(sconf[1]);
         });
 
-        devmon_log("Loaded configuration from devmon.json: \n" + JSON.stringify(CONFIG, null, 4));
+        devmon_log("Loaded configuration from config.json: \n" + JSON.stringify(CONFIG, null, 4));
+
+        if (CONFIG.cwd)
+            process.chdir(CONFIG.cwd);
+        devmon_log('Changed CWD to ' + CONFIG.cwd);
+
         start(CONFIG.processes, CONFIG.proxies);
     });
 }
