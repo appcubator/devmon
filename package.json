@@ -2,12 +2,11 @@
     "name":"devmon",
     "version": "0.0.1",
     "dependencies":{
-        "http-proxy": "*",
-        "forever-monitor": "*",
-        "formidable": "*",
-        "connect": "*",
-        "express": "*",
-        "underscore": "*",
-        "shell-quote": "*"
+        "http-proxy": "1.0.2",
+        "forever-monitor": "1.2.3",
+        "connect": "2.14.2",
+        "express": "3.4.8",
+        "underscore": "1.6.0",
+        "shell-quote": "1.4.1"
     }
 }
