@@ -13,7 +13,7 @@ RUN apt-get install -y python python-dev python-distribute python-pip
 
 # Setup users
 ADD ./sudoers /etc/sudoers
-RUN chmod 0440 /etc/sudoers && groupadd ubuntu && useradd -s /bin/bash -m -g ubuntu -d /home/ubuntu ubuntu
+RUN chmod 0440 /etc/sudoers && chown 0:0 /etc/sudoers && groupadd ubuntu && useradd -s /bin/bash -m -g ubuntu -d /home/ubuntu ubuntu
 
 # Install Node.js via NVM
 RUN su -c "touch .profile && curl https://raw.github.com/creationix/nvm/master/install.sh | sh" -l ubuntu
@@ -22,9 +22,9 @@ RUN su -c "nvm install 0.10" -l ubuntu
 # Add and build devmon
 RUN mkdir /devmon /app && chown ubuntu:ubuntu /devmon /app
 ADD . /devmon
-RUN su -c "cd /devmon && sh build.sh /app" -l ubuntu
+RUN su -c "cd /devmon && nvm use 0.10 && sh build.sh /app" -l ubuntu
 
 
 WORKDIR /devmon
-CMD su -c "node devmon.js /app" -l ubuntu
+CMD su -c "nvm use 0.10 && node devmon.js /app" -l ubuntu
 
