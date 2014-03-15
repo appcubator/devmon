@@ -3,6 +3,7 @@
 var formidable = require('formidable');
 
 var fs = require('fs');
+//var path = require('path');
 var child_process = require('child_process');
 var forever = require('forever-monitor');
 var connect = require('connect');
@@ -30,16 +31,24 @@ String.prototype.startsWith = function (str){
  * watchDirectory is optional, for when you want to watch files. */
 var spawn = function (name, command, watchDirectory) {
     var watchObj = watchDirectory ? {watch:true, watchDirectory:'.'} : {};
+    /*
+    if (watchObj.watchDirectory) {
+        watchObj.watchDirectory = path.resolve(watchObj.watchDirectory);
+        console.log('watching '+watchObj.watchDirectory);
+    } */
+    watchObj.minUptime = 2*1000;      // If app can't stand on it's feet for 2 seconds,
+    watchObj.spinSleepTime = 5*1000; //   wait 5 seconds before restarting.
     var child = forever.start(command, watchObj);
 
     child.on('start', function () { devmon_log(name + ' has started');});
-    child.on('exit', function () { devmon_log(name + 'has quit');});
-    child.on('restart', function () { devmon_log(name + 'has restarted'); });
+    child.on('exit', function () { devmon_log(name + ' has quit');});
+    child.on('restart', function () { devmon_log(name + ' has restarted'); });
+    return child;
 };
 
 var spawnFromConfig = function(config) {
     var child;
-    if (config.name === 'App')
+    if (config[0] === 'App')
         child = spawn(config[0], config[1], '.');
     else
         child = spawn(config[0], config[1]);
@@ -122,6 +131,14 @@ var start = function(spawnConfigs, proxyConfigs) {
     var spawnChildren = _.map(spawnConfigs, spawnFromConfig);
     var proxyServer = proxyFromConfigs(proxyConfigs);
 
+    process.once("SIGINT", function () { process.exit(0); });
+    process.once("SIGTERM", function () { process.exit(0); });
+    process.once("exit", function () {
+        _.each(spawnChildren, function(c) {
+            c.kill('SIGTERM');
+        });
+    });
+
 };
 
 if (require.main === module) {
@@ -142,9 +159,13 @@ if (require.main === module) {
 
         devmon_log("Loaded configuration from config.json: \n" + JSON.stringify(CONFIG, null, 4));
 
-        if (CONFIG.cwd)
-            process.chdir(CONFIG.cwd);
-        devmon_log('Changed CWD to ' + CONFIG.cwd);
+        var cwd = process.argv[2];
+        if (!cwd) {
+            devmon_log("Error: please provide working directory as first arg.");
+            process.exit(1);
+        }
+        process.chdir(cwd);
+        devmon_log('Changed CWD to ' + cwd);
 
         start(CONFIG.processes, CONFIG.proxies);
     });

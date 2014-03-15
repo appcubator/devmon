@@ -1,6 +1,5 @@
 {
-    "cwd": "/tmp/devmontest",
-    "processes": [["App", "node --debug test.js"],
+    "processes": [["App", "node --debug app.js"],
                   ["node-inspector", "node-inspector"],
                   ["butterfly", "butterfly.server.py"]],
     "proxies": [{

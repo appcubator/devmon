@@ -1,6 +1,13 @@
 var express = require('express');
 var app = express();
 var fs = require('fs');
+var child_process = require('child_process');
+
+
+// copy pasted TODO make dry
+var devmon_log = function(s) {
+    console.log('[Appcubator] ' + s);
+};
 
 app.configure(function(){
   app.use(express.bodyParser());
@@ -9,7 +16,7 @@ app.configure(function(){
 });
 
 app.get('/', function(req, res) {
-    res.send('Howdy, world?');
+    res.send('Devmon configuration panel goes here.');
 });
 
 var updateCode = function (tarpath, callback) {
@@ -26,7 +33,7 @@ var updateCode = function (tarpath, callback) {
 
 /* Route to write out files to the FS.
  * Relies on forever-monitor to be watching and restart the app. */
-app.get('/__update_code__', function(req, res) {
+app.post('/__update_code__', function(req, res) {
     /* [ ROUTE ] update code */
     fs.readFile(req.files.code.path, function (err, data) {
         if(err) throw err;
