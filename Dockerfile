@@ -20,11 +20,18 @@ RUN su -c "touch .profile && curl https://raw.github.com/creationix/nvm/master/i
 RUN su -c "nvm install 0.10" -l ubuntu
 
 # Add and build devmon
-RUN mkdir /devmon /app && chown ubuntu:ubuntu /devmon /app
-ADD . /devmon
+RUN mkdir /devmon /app
+ADD ./package.json /devmon/package.json
+ADD ./initialApp /devmon/initialApp
+ADD ./build.sh /devmon/build.sh
+RUN chown -R ubuntu:ubuntu /devmon /app
 RUN su -c "cd /devmon && nvm use 0.10 && sh build.sh /app" -l ubuntu
+
+# (this is separate since it happens to contain git which changes and causes this step to rerun a lot. we want to cache the build step)
+ADD . /devmon
+RUN chown -R ubuntu:ubuntu /devmon /app
 
 
 WORKDIR /devmon
-CMD su -c "nvm use 0.10 && node devmon.js /app" -l ubuntu
+CMD su -c "nvm use 0.10 && cd /devmon && node devmon.js /app" -l ubuntu
 
