@@ -56,7 +56,7 @@ var spawnFromConfig = function(config) {
         child = spawn(config[0], config[1], '.');
     else
         child = spawn(config[0], config[1]);
-    return child;
+    config.child = child;
 };
 
 /* If host matches a config host, return the config.
@@ -81,16 +81,16 @@ var hostToConfig = function(host, configs) {
     return config;
 };
 
-/* Each config is an obj with keys [name, domain, port, webSockFlag] */
-var proxyFromConfigs  = function (configs) {
-    var proxies = {}; // name -> httpProxy object
-    _.each(configs, function(config) {
-        var proxy = httpProxy.createProxyServer({
-            target: 'http://localhost:' + config.port
-        });
-
-        proxies[config.name] = proxy;
+var configureProxy = function(config) {
+    var proxy = httpProxy.createProxyServer({
+        target: 'http://localhost:' + config.port
     });
+
+    config.proxy = proxy;
+};
+
+/* Each config is an obj with keys [name, domain, port, webSockFlag] */
+var setupDynamicProxyServer  = function (configs) {
 
     var proxyServer = connect.createServer(
         // Host based routing
@@ -98,7 +98,7 @@ var proxyFromConfigs  = function (configs) {
             var host = req.headers.host;
             var config = hostToConfig(host, configs);
             devmon_log('Incoming http request host \'' + host + '\' matched \'' + config.name +'\', routing to :' + config.port);
-            proxies[config.name].web(req, res, function (err, req, res) {
+            config.proxy.web(req, res, function (err, req, res) {
                 res.writeHead(500, {
                   'Content-Type': 'text/plain'
                 });
@@ -115,13 +115,15 @@ var proxyFromConfigs  = function (configs) {
         var config = hostToConfig(host, configs);
         if (config.webSockFlag) {
             devmon_log('Incoming ws request host \'' + host + '\' matched \'' + config.name +'\', routing to :' + config.port);
-            proxies[config.name].ws(req, socket, head);
+            config.proxy.ws(req, socket, head);
         }
     });
 
     proxyServer.on('error', function (i) {
         console.log('NOOOOOO');
     });
+
+    return proxyServer;
 };
 
 var appSConfig, appPConfig, CONFIG;
@@ -132,19 +134,22 @@ var start = function(spawnConfigs, proxyConfigs) {
     appSConfig = _.find(spawnConfigs, function(conf) { return conf[0] === 'App'; });
     appPConfig = _.find(proxyConfigs, function(conf) { return conf.name === 'App'; });
 
-    /* start the devmon web app */
-    var webapp = app.app.listen(4000);
+    // autoadd for the devmon web app
     proxyConfigs.push({ name: 'admin', domain: 'devmon', port: 4000, webSockFlag: false });
 
     /* start subprocesses and proxies */
-    var spawnChildren = _.map(spawnConfigs, spawnFromConfig);
-    var proxyServer = proxyFromConfigs(proxyConfigs);
+    _.each(spawnConfigs, spawnFromConfig);
+    _.each(proxyConfigs, configureProxy);
+    var proxyServer = setupDynamicProxyServer(proxyConfigs);
+
+    /* start the devmon web app */
+    var webapp = app.createApp(spawnConfigs, proxyConfigs).listen(4000);
 
     process.once("SIGINT", function () { process.exit(0); });
     process.once("SIGTERM", function () { process.exit(0); });
     process.once("exit", function () {
-        _.each(spawnChildren, function(c) {
-            c.kill('SIGTERM');
+        _.each(spawnConfigs, function(c) {
+            c.child.kill('SIGTERM');
         });
     });
 
