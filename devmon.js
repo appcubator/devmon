@@ -85,6 +85,15 @@ var proxyFromConfigs  = function (configs) {
         });
 
         proxies[config.name] = proxy;
+
+        // Listen for the `error` event on `proxy`.
+        proxy.on('error', function (err, req, res) {
+            res.writeHead(500, {
+              'Content-Type': 'text/plain'
+            });
+
+            res.end('The backend \'' + config.name + '\' is down. Please see the logs.');
+        });
     });
 
     var proxyServer = connect.createServer(
