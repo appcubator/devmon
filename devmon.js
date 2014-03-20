@@ -27,8 +27,10 @@ String.prototype.startsWith = function (str){
 /* name is used for printing logs.
  * command should be an array of args.
  * watchDirectory is optional, for when you want to watch files. */
-var spawn = function (name, command, watchDirectory) {
-    var options = {};
+var spawn = function (name, command, watchDirectory, env, cwd, options) {
+    options = options || {};
+    if (env) options.env=env;
+    if (cwd) options.cwd=cwd;
 
     if (watchDirectory) {
         options.watch = true;
