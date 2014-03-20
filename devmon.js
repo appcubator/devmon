@@ -28,15 +28,20 @@ String.prototype.startsWith = function (str){
  * command should be an array of args.
  * watchDirectory is optional, for when you want to watch files. */
 var spawn = function (name, command, watchDirectory) {
-    var watchObj = watchDirectory ? {watch:true, watchDirectory:'.'} : {};
-    /*
-    if (watchObj.watchDirectory) {
-        watchObj.watchDirectory = path.resolve(watchObj.watchDirectory);
-        console.log('watching '+watchObj.watchDirectory);
-    } */
-    watchObj.minUptime = 2*1000;      // If app can't stand on it's feet for 2 seconds,
-    watchObj.spinSleepTime = 5*1000; //   wait 5 seconds before restarting.
-    var child = forever.start(command, watchObj);
+    var options = {};
+
+    if (watchDirectory) {
+        options.watch = true;
+        options.watchDirectory = watchDirectory;
+    }
+
+    options.minUptime = 2*1000;      // If app can't stand on it's feet for 2 seconds,
+    options.spinSleepTime = 5*1000; //   wait 5 seconds before restarting.
+
+    options.outFile = '/tmp/' + name + '-out.log'; // Path to log output from child stdout
+    options.errFile = '/tmp/' + name + '-err.log'; // Path to log output from child stderr
+
+    var child = forever.start(command, options);
 
     child.on('start', function () { devmon_log(name + ' has started');});
     child.on('exit', function () { devmon_log(name + ' has quit');});
