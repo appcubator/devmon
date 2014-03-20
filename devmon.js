@@ -6,7 +6,6 @@ var child_process = require('child_process');
 var forever = require('forever-monitor');
 var connect = require('connect');
 var httpProxy = require('http-proxy');
-var app = require('./app');
 var _ = require('underscore');
 
 var DEBUG = true;
@@ -15,6 +14,7 @@ var PORT = process.env.PORT || 5000;
 var devmon_log = function(s) {
     console.log('[Appcubator] ' + s);
 };
+exports.log = devmon_log;
 
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
@@ -128,61 +128,15 @@ var setupDynamicProxyServer  = function (configs) {
     return proxyServer;
 };
 
+/* Yes this is bad code, resulting from a forced refactor. */
 var appSConfig, appPConfig, CONFIG;
-
-var start = function(spawnConfigs, proxyConfigs) {
-
-    /* global app configs */
-    appSConfig = _.find(spawnConfigs, function(conf) { return conf[0] === 'App'; });
-    appPConfig = _.find(proxyConfigs, function(conf) { return conf.name === 'App'; });
-
-    // autoadd for the devmon web app
-    proxyConfigs.push({ name: 'admin', domain: 'devmon', port: 4000, webSockFlag: false });
-
-    /* start subprocesses and proxies */
-    _.each(spawnConfigs, spawnFromConfig);
-    _.each(proxyConfigs, configureProxy);
-    var proxyServer = setupDynamicProxyServer(proxyConfigs);
-
-    /* start the devmon web app */
-    var webapp = app.createApp(spawnConfigs, proxyConfigs).listen(4000);
-
-    process.once("SIGINT", function () { process.exit(0); });
-    process.once("SIGTERM", function () { process.exit(0); });
-    process.once("exit", function () {
-        _.each(spawnConfigs, function(c) {
-            c.child.kill('SIGTERM');
-        });
-    });
-
+exports.setGlobal = function (name, val) {
+    if (name === 'appSConfig')
+        appSConfig = val;
+    else if (name === 'appPConfig')
+        appPConfig = val;
+    else if (name === 'CONFIG')
+        CONFIG = val;
+    else
+        throw 'wat';
 };
-
-if (require.main === module) {
-    var file = __dirname + '/config.json';
-
-    fs.readFile(file, 'utf8', function (err, data) {
-        if (err) {
-          devmon_log('Error: ' + err);
-          return;
-        }
-
-        CONFIG = JSON.parse(data);
-        var parse = require('shell-quote').parse;
-        _.each(CONFIG.processes, function(sconf) {
-            // parse the string commands to arrays of args
-            sconf[1] = parse(sconf[1]);
-        });
-
-        devmon_log("Loaded configuration from config.json: \n" + JSON.stringify(CONFIG, null, 4));
-
-        var cwd = process.argv[2];
-        if (!cwd) {
-            devmon_log("Error: please provide working directory as first arg.");
-            process.exit(1);
-        }
-        process.chdir(cwd);
-        devmon_log('Changed CWD to ' + cwd);
-
-        start(CONFIG.processes, CONFIG.proxies);
-    });
-}

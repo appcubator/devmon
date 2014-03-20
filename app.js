@@ -44,8 +44,11 @@ var createApp = function (spawnConfigs, proxyConfigs) {
         }
     });
 
-    // create a new process config entry and spawn it
+    // create a new process config entry and spawn it. send {conf: [...]}
     app.post('/conf/spawn/create', function(req, res) {
+        var conf = req.body.conf;
+        spawnConfigs.push(conf);
+        spawnFromConf(conf);
     });
 
     // update the entire proxy [{}] config
