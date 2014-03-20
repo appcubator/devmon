@@ -43,6 +43,7 @@ var spawn = function (name, command, watchDirectory) {
     child.on('start', function () { devmon_log(name + ' has started');});
     child.on('exit', function () { devmon_log(name + ' has quit');});
     child.on('restart', function () { devmon_log(name + ' has restarted'); });
+    child.on('error', function (err) { devmon_log(name + ' had an error: ' + err.toString()); });
     return child;
 };
 
