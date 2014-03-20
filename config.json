@@ -1,5 +1,5 @@
 {
-    "processes": [["App", "node --debug app.js"],
+    "processes": [["App", "node --debug app.js", { "MONGO_ADDR": "mongodb://testUser:testing123@paulo.mongohq.com:10051/testing" }],
                   ["node-inspector", "node-inspector"],
                   ["butterfly", "butterfly.server.py"]],
     "proxies": [{

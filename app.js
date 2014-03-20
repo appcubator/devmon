@@ -31,7 +31,7 @@ var createApp = function (spawnConfigs, proxyConfigs) {
     /* Process spawning */
     // get the entire spawn config
     app.get('/conf/spawn', function(req, res) {
-        res.json(spawnConfigs);
+       res.json(spawnConfigs);
     });
 
     // kill a process and remove the config entry
@@ -58,7 +58,7 @@ var createApp = function (spawnConfigs, proxyConfigs) {
     /* Proxy configuration */
     // get the entire proxy [{}] config
     app.get('/conf/proxy', function(req, res) {
-        res.json(proxyConfigs);
+        res.json(_.map(proxyConfigs, function(c) { var d = JSON.parse(JSON.stringify(c)); delete d.proxy; return d; }));
     });
 
     // update the entire proxy [{}] config

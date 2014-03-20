@@ -54,9 +54,9 @@ var spawn = function (name, command, watchDirectory, env, cwd, options) {
 var spawnFromConfig = function(config) {
     var child;
     if (config[0] === 'App')
-        child = spawn(config[0], config[1], '.');
+        child = spawn(config[0], config[1], '.', config[2], config[3], config[4]);
     else
-        child = spawn(config[0], config[1]);
+        child = spawn(config[0], config[1], config[2], config[3], config[4]);
     config.child = child;
 };
 
