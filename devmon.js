@@ -14,7 +14,6 @@ var PORT = process.env.PORT || 5000;
 var devmon_log = function(s) {
     console.log('[Appcubator] ' + s);
 };
-exports.log = devmon_log;
 
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
@@ -60,7 +59,6 @@ var spawnFromConfig = function(config) {
         child = spawn(config[0], config[1]);
     config.child = child;
 };
-exports.spawnFromConfig = spawnFromConfig;
 
 /* If host matches a config host, return the config.
  * Otherwise return the app config. */
@@ -91,7 +89,6 @@ var configureProxy = function(config) {
 
     config.proxy = proxy;
 };
-exports.configureProxy = configureProxy;
 
 /* Each config is an obj with keys [name, domain, port, webSockFlag] */
 var setupDynamicProxyServer  = function (configs) {
@@ -129,7 +126,6 @@ var setupDynamicProxyServer  = function (configs) {
 
     return proxyServer;
 };
-exports.setupDynamicProxyServer = setupDynamicProxyServer;
 
 /* Yes this is bad code, resulting from a forced refactor. */
 var appSConfig, appPConfig, CONFIG;
@@ -143,3 +139,7 @@ exports.setGlobal = function (name, val) {
     else
         throw 'wat';
 };
+exports.log = devmon_log;
+exports.spawnFromConfig = spawnFromConfig;
+exports.configureProxy = configureProxy;
+exports.setupDynamicProxyServer = setupDynamicProxyServer;
