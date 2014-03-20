@@ -87,13 +87,7 @@ var proxyFromConfigs  = function (configs) {
         proxies[config.name] = proxy;
 
         // Listen for the `error` event on `proxy`.
-        proxy.on('error', function (err, req, res) {
-            res.writeHead(500, {
-              'Content-Type': 'text/plain'
-            });
-
-            res.end('The backend \'' + config.name + '\' is down. Please see the logs.');
-        });
+        proxy.on('error', );
     });
 
     var proxyServer = connect.createServer(
@@ -102,7 +96,12 @@ var proxyFromConfigs  = function (configs) {
             var host = req.headers.host;
             var config = hostToConfig(host, configs);
             devmon_log('Incoming http request host \'' + host + '\' matched \'' + config.name +'\', routing to :' + config.port);
-            proxies[config.name].web(req, res);
+            proxies[config.name].web(req, res, function (err, req, res) {
+                res.writeHead(500, {
+                  'Content-Type': 'text/plain'
+                });
+                res.end('The backend \'' + config.name + '\' is down. Please see the logs.');
+            });
         }
     ).listen(PORT);
 
