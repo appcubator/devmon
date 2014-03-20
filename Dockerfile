@@ -33,5 +33,5 @@ RUN chown -R ubuntu:ubuntu /devmon /app
 
 
 WORKDIR /devmon
-CMD su -c "nvm use 0.10 && cd /devmon && node devmon.js /app" -l ubuntu
+CMD su -c "nvm use 0.10 && cd /devmon && node main.js /app" -l ubuntu
 
