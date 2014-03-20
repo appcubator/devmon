@@ -2,6 +2,7 @@ var express = require('express');
 var fs = require('fs');
 var child_process = require('child_process');
 var devmon = require('./devmon');
+var _ = require('underscore');
 
 
 var updateCode = function (tarpath, callback) {
