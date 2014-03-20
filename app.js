@@ -28,6 +28,12 @@ var createApp = function (spawnConfigs, proxyConfigs) {
         res.send('Devmon configuration panel goes here.');
     });
 
+    /* Process spawning */
+    // get the entire spawn config
+    app.get('/conf/spawn', function(req, res) {
+        res.json(spawnConfigs);
+    });
+
     // kill a process and remove the config entry
     app.post('/conf/spawn/:pid/remove', function(req, res) {
         var spawnConf = _.find(spawnConfigs, function(c) { return c.child.pid === req.params.pid; });
@@ -38,6 +44,7 @@ var createApp = function (spawnConfigs, proxyConfigs) {
         if(i != -1) {
             spawnConfigs.splice(i, 1);
         }
+        res.send('ok');
     });
 
     // create a new process config entry and spawn it. send {conf: [...]}
@@ -45,10 +52,26 @@ var createApp = function (spawnConfigs, proxyConfigs) {
         var conf = req.body.conf;
         spawnConfigs.push(conf);
         devmon.spawnFromConfig(conf);
+        res.send('ok');
+    });
+
+    /* Proxy configuration */
+    // get the entire proxy [{}] config
+    app.get('/conf/proxy', function(req, res) {
+        res.json(proxyConfigs);
     });
 
     // update the entire proxy [{}] config
-    app.post('/conf/proxy/update', function() {});
+    app.post('/conf/proxy/update', function(req, res) {
+        var conf = req.body.conf;
+        while (proxyConfigs.length > 0) {
+            proxyConfigs.pop();
+        }
+        while (conf.length !== 0) {
+            proxyConfigs.push(conf.pop(0));
+        }
+        res.send('ok');
+    });
 
     /* Route to write out files to the FS.
      * Relies on forever-monitor to be watching and restart the app. */
