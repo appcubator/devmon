@@ -85,9 +85,6 @@ var proxyFromConfigs  = function (configs) {
         });
 
         proxies[config.name] = proxy;
-
-        // Listen for the `error` event on `proxy`.
-        proxy.on('error', );
     });
 
     var proxyServer = connect.createServer(
