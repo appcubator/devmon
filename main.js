@@ -7,7 +7,7 @@ var parse = require('shell-quote').parse;
 var start = function(spawnConfigs, proxyConfigs) {
 
     /* global app configs */
-    devmon.setGlobal('appSConfig', _.find(spawnConfigs, function(conf) { return conf[0] === 'App'; }));
+    devmon.setGlobal('appSConfig', _.find(spawnConfigs, function(conf) { return conf.name === 'App'; }));
     devmon.setGlobal('appPConfig', _.find(proxyConfigs, function(conf) { return conf.name === 'App'; }));
 
     // autoadd for the devmon web app
@@ -44,7 +44,7 @@ if (require.main === module) {
         devmon.setGlobal('CONFIG', CONFIG);
         _.each(CONFIG.processes, function(sconf) {
             // parse the string commands to arrays of args
-            sconf[1] = parse(sconf[1]);
+            sconf.cmd = parse(sconf.cmd);
         });
 
         devmon.log("Loaded configuration from config.json: \n" + JSON.stringify(CONFIG, null, 4));
