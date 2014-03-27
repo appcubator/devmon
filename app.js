@@ -32,12 +32,34 @@ var createApp = function (spawnConfigs, proxyConfigs) {
     /* Process spawning */
     // get the entire spawn config
     app.get('/conf/spawn', function(req, res) {
-       res.json(spawnConfigs);
+       res.send(['<html>',
+                   '<body>',
+                     '<div>',
+                       '<h2>Terminate a process</h2>',
+                       _.map(spawnConfigs, function(s) {
+                          return ['<div>',
+                                     '<div>' + JSON.stringify(spawnConfigs, null, 2) + '</div>',
+                                     '<form method="POST" action="/conf/spawn/' + s.child.pid.toString() + '/create">',
+                                       '<input type="submit" value="Kill">',
+                                     '</form>',
+                                   '</div>'].join('\n');
+                       }).join('\n'),
+                     '</div>',
+                     '<div>',
+                       '<h2>Spawn a new process</h2>',
+                       '<form method="POST" action="/conf/spawn/create">',
+                       '<textarea></textarea>',
+                       '<input type="submit" value="create">',
+                       '</form>',
+                     '</div>',
+                   '</body>',
+                 '</html>'
+       ].join('\n'));
     });
 
     // kill a process and remove the config entry
     app.post('/conf/spawn/:pid/remove', function(req, res) {
-        var spawnConf = _.find(spawnConfigs, function(c) { return c.child.pid === req.params.pid; });
+        var spawnConf = _.find(spawnConfigs, function(c) { return c.child.pid === parseInt(req.params.pid); });
         spawnConf.child.kill('SIGINT');
         spawnConf.child.disconnect();
         // Find and remove item from an array
@@ -51,8 +73,8 @@ var createApp = function (spawnConfigs, proxyConfigs) {
     // create a new process config entry and spawn it. send {conf: [...]}
     app.post('/conf/spawn/create', function(req, res) {
         var conf = req.body.conf;
-        spawnConfigs.push(conf);
         devmon.spawnFromConfig(conf);
+        spawnConfigs.push(conf);
         res.send('ok');
     });
 
