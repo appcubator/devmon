@@ -66,7 +66,8 @@ var createApp = function (spawnConfigs, proxyConfigs) {
             var pidstr = _.map(spawnConfigs, function(c) {return c.child.data.pid.toString()}).join(' ');
             res.send('ruh roh. here are valid pids '+ pidstr);
         } else {
-        spawnConf.child.kill(true);
+        spawnConf.child.kill(true); // prevents restarting
+        spawnConf.child.restart = function() {}; // TODO FIXME DIRTY HACK to address a file-watcher bug where it does not de-register stopped apps.
         // Find and remove item from an array
         var i = spawnConfigs.indexOf(spawnConf);
         if(i != -1) {
