@@ -57,7 +57,7 @@ var spawnFromConfig = function(config, parentArr) {
 
     var removeHandler = function() {
         // Find and remove item from an array
-        var i = parentArr.indexOf(spawnConf);
+        var i = parentArr.indexOf(config);
         if(i != -1) {
             parentArr.splice(i, 1);
         } else {
