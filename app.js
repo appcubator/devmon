@@ -63,26 +63,21 @@ var createApp = function (spawnConfigs, proxyConfigs) {
     app.post('/conf/spawn/:pid/remove', function(req, res) {
         var spawnConf = _.find(spawnConfigs, function(c) { return c.child.data.pid === parseInt(req.params.pid); });
 	if (spawnConf === undefined) {
-            var pidstr = _.map(spawnConfigs, function(c) {return c.child.data.pid.toString()}).join(' ');
-            res.send('ruh roh. here are valid pids '+ pidstr);
+            var pidstr = _.map(spawnConfigs, function(c) { return c.child.data.pid.toString(); }).join(' ');
+            res.status(404).send('ruh roh. here are valid pids '+ pidstr);
         } else {
-        spawnConf.child.kill(true); // prevents restarting
-        spawnConf.child.restart = function() {}; // TODO FIXME DIRTY HACK to address a file-watcher bug where it does not de-register stopped apps.
-        // Find and remove item from an array
-        var i = spawnConfigs.indexOf(spawnConf);
-        if(i != -1) {
-            spawnConfigs.splice(i, 1);
-        }
-        res.send('ok');
+            spawnConf.child.kill(true); // prevents restarting
+            spawnConf.child.restart = function() {}; // TODO FIXME DIRTY HACK to address a file-watcher bug where it does not de-register stopped apps.
+            res.redirect('/conf/spawn');
         }
     });
 
     // create a new process config entry and spawn it. send {conf: [...]}
     app.post('/conf/spawn/create', function(req, res) {
         var conf = JSON.parse(req.body.conf);
-        devmon.spawnFromConfig(conf);
+        devmon.spawnFromConfig(conf, spawnConfigs);
         spawnConfigs.push(conf);
-        res.send('ok');
+        res.redirect('/conf/spawn');
     });
 
     /* Proxy configuration */

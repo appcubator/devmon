@@ -14,7 +14,7 @@ var start = function(spawnConfigs, proxyConfigs) {
     proxyConfigs.push({ name: 'admin', domain: 'devmon', port: 4000, webSockFlag: false });
 
     /* start subprocesses and proxies */
-    _.each(spawnConfigs, devmon.spawnFromConfig);
+    _.each(spawnConfigs, function (config) { devmon.spawnFromConfig(config, spawnConfigs); } );
     _.each(proxyConfigs, devmon.configureProxy);
     var proxyServer = devmon.setupDynamicProxyServer(proxyConfigs);
 

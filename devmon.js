@@ -26,10 +26,8 @@ String.prototype.startsWith = function (str){
 /* name is used for printing logs.
  * command should be an array of args.
  * watchDirectory is optional, for when you want to watch files. */
-var spawn = function (name, command, watchDirectory, env, cwd, options) {
+var spawn = function (name, command, watchDirectory, options, exitHandler) {
     options = options || {};
-    if (env) options.env=env;
-    if (cwd) options.cwd=cwd;
 
     if (watchDirectory) {
         options.watch = true;
@@ -45,18 +43,33 @@ var spawn = function (name, command, watchDirectory, env, cwd, options) {
     var child = forever.start(command, options);
 
     child.on('start', function () { devmon_log(name + ' has started');});
-    child.on('exit', function () { devmon_log(name + ' has quit');});
+    child.on('exit', function () { devmon_log(name + ' has quit'); exitHandler(); });
     child.on('restart', function () { devmon_log(name + ' has restarted'); });
     child.on('error', function (err) { devmon_log(name + ' had an error: ' + err.toString()); });
     return child;
 };
 
-var spawnFromConfig = function(config) {
+// will set it up to remove from the list when process exits.
+var spawnFromConfig = function(config, parentArr) {
+    var options = config.options || {};
+    options.env = options.env || config.env;
+    options.cwd = options.cwd || config.cwd;
+
+    var removeHandler = function() {
+        // Find and remove item from an array
+        var i = parentArr.indexOf(spawnConf);
+        if(i != -1) {
+            parentArr.splice(i, 1);
+        } else {
+            // this could be interesting.
+        }
+    };
+
     var child;
     if (config.name === 'App')
-        child = spawn(config.name, config.cmd, '.', config.env, config.cwd);
+        child = spawn(config.name, config.cmd, '.', options, removeHandler);
     else
-        child = spawn(config.name, config.cmd, null, config.env, config.cwd);
+        child = spawn(config.name, config.cmd, null, options, removeHandler);
     config.child = child;
 };
 
