@@ -8,7 +8,7 @@
             "cmd": "node-inspector"
         },{
             "name": "butterfly",
-            "cmd": "butterfly.server.py"
+            "cmd": "butterfly.server.py --unsecure"
     }],
     "proxies": [{
             "name": "App",
