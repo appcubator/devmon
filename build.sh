@@ -3,7 +3,7 @@
 set -e
 
 npm install
-sudo pip install butterfly
+sudo pip install butterfly==1.2.3
 sudo env "PATH=$PATH" npm install -g node-inspector
 cp -r initialApp/* $1
 cd $1
