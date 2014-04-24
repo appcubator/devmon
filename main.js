@@ -21,12 +21,21 @@ var start = function(spawnConfigs, proxyConfigs) {
     /* start the devmon web app */
     var webapp = app.createApp(spawnConfigs, proxyConfigs).listen(4000);
 
-    process.once("SIGINT", function () { process.exit(0); });
-    process.once("SIGTERM", function () { process.exit(0); });
+    process.once("SIGINT", function () {
+        console.log('caught SIGINT');
+        process.exit(1);
+    });
+    process.once("SIGTERM", function () {
+        console.log('caught SIGTERM');
+        process.exit(1);
+    });
     process.once("exit", function () {
         _.each(spawnConfigs, function(c) {
             c.child.kill('SIGTERM');
+            console.log('Goodbye child');
         });
+        console.log('Goodbye world');
+        process.exit(1);
     });
 
 };
