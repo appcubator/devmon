@@ -25,6 +25,7 @@ ADD ./package.json /devmon/package.json
 ADD ./initialApp /devmon/initialApp
 ADD ./build.sh /devmon/build.sh
 RUN chown -R ubuntu:ubuntu /devmon /app
+RUN sudo apt-get install -y libffi-dev libssl-dev 
 RUN su -c "cd /devmon && nvm use 0.10 && sh build.sh /app" -l ubuntu
 
 # (this is separate since it happens to contain git which changes and causes this step to rerun a lot. we want to cache the build step)
